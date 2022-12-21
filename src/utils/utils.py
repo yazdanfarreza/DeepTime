@@ -1,3 +1,177 @@
+from typing import Optional, Dict
+import logging
+from os.path import join
+
+import gin
+import torch
+from torch.utils.tensorboard import SummaryWriter
+
+
+@gin.configurable()
+class Checkpoint:
+    def __init__(self,
+                 checkpoint_dir: str,
+                 patience: Optional[int] = 7,
+                 delta: Optional[float] = 0.):
+        self.checkpoint_dir = checkpoint_dir
+        self.model_path = join(checkpoint_dir, 'model.pth')
+
+        # early stopping
+        self.patience = patience
+        self.counter = 0
+        self.best_loss = float('inf')
+        self.early_stop = False
+        self.delta = delta
+
+        # logging
+        self.summary_writer = SummaryWriter(log_dir=checkpoint_dir)
+
+    def __call__(self,
+                 epoch: int,
+                 model: torch.nn.Module,
+                 scalars: Optional[Dict[str, float]] = None):
+        for name, value in scalars.items():
+            # logging
+            self.summary_writer.add_scalar(name, value, epoch)
+
+            # early stopping
+            if name == 'Loss/Val':
+                val_loss = value
+                if val_loss <= self.best_loss + self.delta:
+                    logging.info(
+                        f"Validation loss decreased ({self.best_loss:.3f} --> {val_loss:.3f}). Saving model ...")
+                    torch.save(model.state_dict(), self.model_path)
+                    self.best_loss = val_loss
+                    self.counter = 0
+                else:
+                    self.counter += 1
+                    logging.info(f"Validation loss increased ({self.best_loss:.3f} --> {val_loss:.3f}). "
+                                 f"Early stopping counter: {self.counter} out of {self.patience}")
+                    if self.counter >= self.patience >= 0:
+                        self.early_stop = True
+
+        self.summary_writer.flush()
+
+    def close(self, scores: Optional[Dict[str, float]] = None):
+        if scores is not None:
+            for name, value in scores.items():
+                self.summary_writer.add_scalar(name, value)
+        self.summary_writer.close()
+
+
+from typing import Optional, Callable
+from functools import partial
+
+import torch
+import torch.nn.functional as F
+from torch import Tensor
+
+
+def get_loss_fn(loss_name: str,
+                delta: Optional[float] = 1.0,
+                beta: Optional[float] = 1.0) -> Callable:
+    return {'mse': F.mse_loss,
+            'mae': F.l1_loss,
+            'huber': partial(F.huber_loss, delta=delta),
+            'smooth_l1': partial(F.smooth_l1_loss, beta=beta)}[loss_name]
+
+import numpy as np
+
+
+def rse(pred, true):
+    return np.sqrt(np.sum((true - pred) ** 2)) / np.sqrt(np.sum((true - true.mean()) ** 2))
+
+
+def corr(pred, true):
+    u = ((true - true.mean(0)) * (pred - pred.mean(0))).sum(0)
+    d = np.sqrt(((true - true.mean(0)) ** 2 * (pred - pred.mean(0)) ** 2).sum(0))
+    return (u / d).mean(-1)
+
+
+def mae(pred, true):
+    return np.mean(np.abs(pred - true))
+
+
+def mse(pred, true):
+    return np.mean((pred - true) ** 2)
+
+
+def rmse(pred, true):
+    return np.sqrt(mse(pred, true))
+
+
+def mape(pred, true):
+    return np.mean(np.abs((pred - true) / true))
+
+
+def mspe(pred, true):
+    return np.mean(np.square((pred - true) / true))
+
+
+def calc_metrics(pred, true):
+    return {'mae': mae(pred, true),
+            'mse': mse(pred, true),
+            'rmse': rmse(pred, true),
+            'mape': mape(pred, true),
+            'mspe': mspe(pred, true)}
+
+
+from typing import Optional, Tuple
+
+import numpy as np
+import torch
+from torch import Tensor
+from einops import reduce
+
+
+def default_device() -> torch.device:
+    """
+    PyTorch default device is GPU when available, CPU otherwise.
+    :return: Default device.
+    """
+    return torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+
+def to_tensor(array: np.ndarray, to_default_device: Optional[bool] = True) -> Tensor:
+    """
+    Convert numpy array to tensor on default device.
+    :param array: Numpy array to convert.
+    :param to_default_device Place tensor on default device or not.
+    :return: PyTorch tensor, optionally on default device.
+    """
+    if to_default_device:
+        return torch.as_tensor(array, dtype=torch.float32).to(default_device())
+
+
+def divide_no_nan(a, b):
+    """
+    a/b where the resulted NaN or Inf are replaced by 0.
+    """
+    mask = b == .0
+    b[mask] = 1.
+    result = a / b
+    result[mask] = .0
+    result[result != result] = .0
+    result[result == np.inf] = .0
+    return result
+
+
+def scale(x: Tensor,
+          scaling_factor: Optional[Tensor] = None) -> Tuple[Tensor, Tensor]:
+    if scaling_factor is not None:
+        x = x / scaling_factor
+        return x, scaling_factor
+
+    scaling_factor = reduce(torch.abs(x).data, 'b t d -> b 1 d', 'mean')
+    scaling_factor[scaling_factor == 0.0] = 1.0
+    x = x / scaling_factor
+    return x, scaling_factor
+
+
+def descale(forecast: Tensor, scaling_factor: Tensor) -> Tensor:
+    return forecast * scaling_factor
+
+
 from abc import ABC, abstractmethod
 from typing import Optional, List, Union
 

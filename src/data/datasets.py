@@ -8,7 +8,7 @@ import pandas as pd
 from sklearn.preprocessing import StandardScaler
 from torch.utils.data import Dataset, DataLoader
 
-from utils.time_features import get_time_features
+from utils import get_time_features
 
 
 @gin.configurable()

@@ -1,4 +1,3 @@
-import os
 from os.path import join
 import math
 import logging
@@ -13,13 +12,10 @@ from torch import optim
 from torch import nn
 
 from experiments.base import Experiment
-from data.datasets import ForecastDataset
+from data import ForecastDataset
 from models import get_model
-from utils.checkpoint import Checkpoint
-from utils.ops import default_device, to_tensor
-from utils.losses import get_loss_fn
-from utils.metrics import calc_metrics
 
+from utils import Checkpoint, default_device, to_tensor, get_loss_fn, calc_metrics
 
 class ForecastExperiment(Experiment):
     @gin.configurable()
