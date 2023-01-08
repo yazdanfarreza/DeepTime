@@ -2,7 +2,7 @@ from os.path import join
 import math
 import logging
 from typing import Callable, Optional, Union, Dict, Tuple
-
+from models import DeepTIMe
 import gin
 from fire import Fire
 import numpy as np
@@ -13,12 +13,12 @@ from torch import nn
 
 from experiments.base import Experiment
 from data import ForecastDataset
-from models import get_model
+# from models import get_model
 
 from utils import Checkpoint, default_device, to_tensor, get_loss_fn, calc_metrics
 
 class ForecastExperiment(Experiment):
-    @gin.configurable()
+    @gin.configurable
     def instance(self,
                  model_type: str,
                  save_vals: Optional[bool] = True,):
@@ -46,7 +46,7 @@ class ForecastExperiment(Experiment):
         checkpoint.close({**val_metrics, **test_metrics})
 
 
-@gin.configurable()
+@gin.configurable
 def get_optimizer(model: nn.Module,
                   lr: Optional[float] = 1e-3,
                   lambda_lr: Optional[float] = 1.,
@@ -70,7 +70,7 @@ def get_optimizer(model: nn.Module,
     return optimizer
 
 
-@gin.configurable()
+@gin.configurable
 def get_scheduler(optimizer: optim.Optimizer,
                   T_max: int,
                   warmup_epochs: int,
@@ -97,7 +97,7 @@ def get_scheduler(optimizer: optim.Optimizer,
     return scheduler
 
 
-@gin.configurable()
+@gin.configurable
 def get_data(flag: bool,
              batch_size: int) -> Tuple[ForecastDataset, DataLoader]:
     if flag in ('val', 'test'):
@@ -109,14 +109,10 @@ def get_data(flag: bool,
     else:
         raise ValueError(f'no such flag {flag}')
     dataset = ForecastDataset(flag)
-    data_loader = DataLoader(dataset,
-                             batch_size=batch_size,
-                             shuffle=shuffle,
-                             drop_last=drop_last)
-    return dataset, data_loader
+    return dataset
 
 
-@gin.configurable()
+@gin.configurable
 def train(model: nn.Module,
           checkpoint: Checkpoint,
           train_loader: DataLoader,
@@ -172,49 +168,13 @@ def train(model: nn.Module,
     return model
 
 
-@torch.no_grad()
-def validate(model: nn.Module,
-             loader: DataLoader,
-             loss_fn: Optional[Callable] = None,
-             report_metrics: Optional[bool] = False,
-             save_path: Optional[str] = None) -> Union[Dict[str, float], float]:
-    model.eval()
-    preds = []
-    trues = []
-    inps = []
-    total_loss = []
-    for it, data in enumerate(loader):
-        x, y, x_time, y_time = map(to_tensor, data)
+def get_model(model_type: str, **kwargs: Union[int, float]) -> torch.nn.Module:
+    if model_type == 'deeptime':
+        model = deeptime(datetime_feats=kwargs['datetime_feats'])
+    else:
+        raise ValueError(f"Unknown model type {model_type}")
+    return model
 
-        if x.shape[0] == 1:
-            # skip final batch if batch_size == 1
-            # due to bug in torch.linalg.solve which raises error when batch_size == 1
-            continue
-
-        forecast = model(x, x_time, y_time)
-
-        if report_metrics:
-            preds.append(forecast)
-            trues.append(y)
-            if save_path is not None:
-                inps.append(x)
-        else:
-            loss = loss_fn(forecast, y, reduction='none')
-            total_loss.append(loss)
-
-    if report_metrics:
-        preds = torch.cat(preds, dim=0).detach().cpu().numpy()
-        trues = torch.cat(trues, dim=0).detach().cpu().numpy()
-        if save_path is not None:
-            inps = torch.cat(inps, dim=0).detach().cpu().numpy()
-            np.save(join(save_path, 'inps.npy'), inps)
-            np.save(join(save_path, 'preds.npy'), preds)
-            np.save(join(save_path, 'trues.npy'), trues)
-        metrics = calc_metrics(preds, trues)
-        return metrics
-
-    total_loss = torch.cat(total_loss, dim=0).cpu()
-    return np.average(total_loss)
 
 
 if __name__ == '__main__':

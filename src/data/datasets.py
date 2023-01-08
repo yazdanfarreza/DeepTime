@@ -11,7 +11,7 @@ from torch.utils.data import Dataset, DataLoader
 from utils import get_time_features
 
 
-@gin.configurable()
+@gin.configurable
 class ForecastDataset(Dataset):
     def __init__(self,
                  flag: str,

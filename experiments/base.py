@@ -23,7 +23,7 @@ class Experiment(ABC):
         self.root = Path(config_path).parent
         gin.parse_config_file(self.config_path)
 
-    @gin.configurable()
+    @gin.configurable
     def build(self,
               experiment_name: str,
               module: str,
@@ -69,11 +69,11 @@ class Experiment(ABC):
     @abstractmethod
     def instance(self):
         """
-        Instance logic method must be implemented with @gin.configurable()
+        Instance logic method must be implemented with @gin.configurable
         """
         ...
 
-    @gin.configurable()
+    @gin.configurable
     def run(self, timer: Optional[int] = 0):
         """
         Run instance logic.

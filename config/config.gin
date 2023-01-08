@@ -1,13 +1,10 @@
-build.experiment_name = 'ECL/96M'
-build.module = 'experiments.forecast'
+build.experiment_name = 'ETTm2/96M'
 build.repeat = 1
 build.variables_dict = {
 }
 
-instance.model_type = 'deeptime'
+instance.model_type = 'DeepTIMe'
 instance.save_vals = False
-
-DataLoader.batch_size = 256
 
 get_optimizer.lr = 1e-3
 get_optimizer.lambda_lr = 1.
@@ -23,12 +20,13 @@ train.clip = 10.
 
 Checkpoint.patience = 7
 
+
 deeptime.layer_size = 256
-deeptime.inr_layers = 5
+deeptime.inr_layers = 2
 deeptime.n_fourier_feats = 4096
 deeptime.scales = [0.01, 0.1, 1, 5, 10, 20, 50, 100]
 
-ForecastDataset.data_path = 'electricity/electricity.csv'
+ForecastDataset.data_path = 'ETT-small/ETTm2.csv'
 ForecastDataset.target = 'OT'
 ForecastDataset.scale = True
 ForecastDataset.cross_learn = False
@@ -36,4 +34,14 @@ ForecastDataset.time_features = []
 ForecastDataset.normalise_time_features = True
 ForecastDataset.features = 'M'
 ForecastDataset.horizon_len = 96
-ForecastDataset.lookback_mult = 9
+ForecastDataset.lookback_mult = 7
+repeat = 0
+
+
+DeepTimeTrainer.lr = 1e-3
+DeepTimeTrainer.lambda_lr = 1.
+DeepTimeTrainer.weight_decay = 1e-2
+DeepTimeTrainer.warmup_epochs = 5
+DeepTimeTrainer.T_max = 50
+DeepTimeTrainer.eta_min = 0.
+DeepTimeTrainer.random_seed = 6

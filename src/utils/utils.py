@@ -5,9 +5,9 @@ from os.path import join
 import gin
 import torch
 from torch.utils.tensorboard import SummaryWriter
-
-
-@gin.configurable()
+import torch.nn as nn
+from torch.utils.data import DataLoader
+@gin.configurable
 class Checkpoint:
     def __init__(self,
                  checkpoint_dir: str,
@@ -354,3 +354,48 @@ def get_time_features(dates: pd.DatetimeIndex, normalise: bool, a: Optional[floa
     if len(features) == 0:
         return np.empty((dates.shape[0], 0))
     return np.stack(features, axis=1)
+
+
+@torch.no_grad()
+def validate(model: nn.Module,
+             loader: DataLoader,
+             loss_fn: Optional[Callable] = None,
+             report_metrics: Optional[bool] = False,
+             save_path: Optional[str] = None) -> Union[Dict[str, float], float]:
+    model.eval()
+    preds = []
+    trues = []
+    inps = []
+    total_loss = []
+    for it, data in enumerate(loader):
+        x, y, x_time, y_time = map(to_tensor, data)
+
+        if x.shape[0] == 1:
+            # skip final batch if batch_size == 1
+            # due to bug in torch.linalg.solve which raises error when batch_size == 1
+            continue
+
+        forecast = model(x, x_time, y_time)
+
+        if report_metrics:
+            preds.append(forecast)
+            trues.append(y)
+            if save_path is not None:
+                inps.append(x)
+        else:
+            loss = loss_fn(forecast, y, reduction='none')
+            total_loss.append(loss)
+
+    if report_metrics:
+        preds = torch.cat(preds, dim=0).detach().cpu().numpy()
+        trues = torch.cat(trues, dim=0).detach().cpu().numpy()
+        if save_path is not None:
+            inps = torch.cat(inps, dim=0).detach().cpu().numpy()
+            np.save(join(save_path, 'inps.npy'), inps)
+            np.save(join(save_path, 'preds.npy'), preds)
+            np.save(join(save_path, 'trues.npy'), trues)
+        metrics = calc_metrics(preds, trues)
+        return metrics
+
+    total_loss = torch.cat(total_loss, dim=0).cpu()
+    return np.average(total_loss)
