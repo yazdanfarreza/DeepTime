@@ -32,19 +32,13 @@ class DeepTimeTrainer(pl.LightningModule):
         self.lambda_lr = lambda_lr
         self.weight_decay = weight_decay
         self.warmup_epochs = warmup_epochs
-
-        # Generator
-
         self.random_seed = random_seed
-
-        #######
         self.lr = lr
         self.lambda_lr = lambda_lr
         self.weight_decay = weight_decay
         self.T_max = T_max
         self.warmup_epochs = warmup_epochs
         self.eta_min = eta_min
-
         self.model = get_model(
             model_type='deeptime',
             dim_size=dim_size,
@@ -69,7 +63,6 @@ class DeepTimeTrainer(pl.LightningModule):
 
         self.log('train_loss', loss, prog_bar=True, on_epoch=True)
 
-        # remove lr scheduler
         return {'loss': loss, 'train_loss': loss, }
 
     def training_epoch_end(self, outputs):
