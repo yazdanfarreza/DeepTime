@@ -46,6 +46,7 @@ __Option B__: Directly run the experiments with hyperparameters provided in the 
 
 1. Run the following command to generate the experiments: `make build-all path=experiments/configs/ETTm2`.
 
+* Set the `src` directory as the source code.
 Whatever you choose, you can put the `.gin` configuration file in config file and then just run 1 `python script/train.py --config_path=config/config.gin`
 
 Finally, results can be viewed on tensorboard by running `tensorboard --logdir storage/experiments/`, or in
@@ -90,21 +91,3 @@ a `.gin` configuration file based on the `build.variables_dict` argument.
    ``` 
    or view the `storage/experiments/deeptime/experiment_name/metrics.npy` file.
 
-## Acknowledgements
-
-The implementation of DeepTime relies on resources from the following codebases and repositories, we thank the original
-authors for open-sourcing their work.
-
-* https://github.com/ElementAI/N-BEATS
-* https://github.com/zhouhaoyi/Informer2020
-* https://github.com/thuml/Autoformer
-
-## Citation
-
-Please consider citing if you find this code useful to your research.
-<pre>@article{woo2022deeptime,
-    title={DeepTime: Deep Time-Index Meta-Learning for Non-Stationary Time-Series Forecasting},
-    author={Gerald Woo and Chenghao Liu and Doyen Sahoo and Akshat Kumar and Steven C. H. Hoi},
-    year={2022},
-    url={https://arxiv.org/abs/2207.06046},
-}</pre>
