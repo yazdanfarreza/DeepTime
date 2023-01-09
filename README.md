@@ -41,14 +41,12 @@ hyperparameter search, or to directly run the experiments with hyperparameters p
 __Option A__: Run the full hyperparameter search.
 
 1. Run the following command to generate the experiments: `make build-all path=experiments/configs/hp_search`.
-2. Run the following script to perform training and evaluation: `./run_hp_search.sh` (you may need to
-   run `chmod u+x run_hp_search.sh` first).
 
 __Option B__: Directly run the experiments with hyperparameters provided in the configuration files.
 
 1. Run the following command to generate the experiments: `make build-all path=experiments/configs/ETTm2`.
-2. Run the following script to perform training and evaluation: `./run.sh` (you may need to run `chmod u+x run.sh`
-   first).
+
+Whatever you choose, you can put the `.gin` configuration file in config file and then just run 1 `python script/train.py --config_path=config/config.gin`
 
 Finally, results can be viewed on tensorboard by running `tensorboard --logdir storage/experiments/`, or in
 the `storage/experiments/experiment_name/metrics.npy` file.
