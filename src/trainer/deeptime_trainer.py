@@ -145,7 +145,6 @@ class DeepTimeTrainer(pl.LightningModule):
                     (T_cur - self.warmup_epochs) / (self.T_max - self.warmup_epochs) * math.pi))) / lr
             elif scheduler == 'cosine_annealing_with_linear_warmup':
                 lr = eta_max = param_group['lr']
-                # https://blog.csdn.net/qq_36560894/article/details/114004799
                 fn = lambda T_cur: T_cur / self.warmup_epochs if T_cur < self.warmup_epochs else (self.eta_min + 0.5 * (
                         eta_max - self.eta_min) * (1.0 + math.cos(
                     (T_cur - self.warmup_epochs) / (self.T_max - self.warmup_epochs) * math.pi))) / lr
